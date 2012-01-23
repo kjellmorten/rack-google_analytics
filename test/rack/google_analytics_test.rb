@@ -1,3 +1,4 @@
+# coding: utf-8
 require 'test/unit'
 require 'rack/mock'
 
@@ -24,6 +25,12 @@ class Rack::GoogleAnalyticsTest < Test::Unit::TestCase
   def test_should_buff_content_length_by_the_size_of_tracker_code
     request do |app, req|
       assert_equal HTML_DOC.length + app.send(:tracking_code, WEB_PROPERTY_ID).length, req.content_length
+    end
+  end
+
+  def test_should_buff_multibyte_content_length_by_the_size_of_tracker_code
+    request({}, UTF8_DOC) do |app, req|
+      assert_equal UTF8_DOC.bytesize + app.send(:tracking_code, WEB_PROPERTY_ID).length, req.content_length
     end
   end
 
@@ -76,17 +83,29 @@ class Rack::GoogleAnalyticsTest < Test::Unit::TestCase
     </poem>
     EOF
 
-    def request(opts = {})
-      @application = app(opts)
+    UTF8_DOC = <<-EOF
+    <html>
+      <head>
+        <title>Rack::GoogleAnalytics é</title>
+      </head>
+      <body>
+        <h1>Rack::GoogleAnalytics</h1>
+      </body>
+    </html>
+    EOF
+
+
+    def request(opts = {}, doc = HTML_DOC)
+      @application = app(opts, doc)
       @request = Rack::MockRequest.new(@application).get("/")
       yield(@application, @request) if block_given?
       @request
     end
 
-    def app(opts = {})
+    def app(opts = {}, doc)
       opts = opts.clone
       opts[:content_type] ||= "text/html"
-      opts[:body]         ||= [HTML_DOC]
+      opts[:body]         ||= [doc]
       rack_app = lambda { |env| [200, { 'Content-Type' => opts.delete(:content_type) }, opts.delete(:body)] }
       opts[:web_property_id] ||= WEB_PROPERTY_ID
       Rack::GoogleAnalytics.new(rack_app, opts)

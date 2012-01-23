@@ -10,7 +10,7 @@ module Rack #:nodoc:
         index = body.rindex("</body>")
         if index
           body.insert(index, tracking_code(options[:web_property_id]))
-          headers["Content-Length"] = body.length.to_s
+          headers["Content-Length"] = body.bytesize.to_s
           response = [body]
         end
       end
